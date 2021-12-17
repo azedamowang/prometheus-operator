@@ -33,3 +33,7 @@ spec:
     runAsUser: 1000
   serviceAccountName: alertmanager-main
   version: 0.21.0
+  volumes:
+    - name: storage-volume
+      persistentVolumeClaim:
+        claimName: alertmanager
