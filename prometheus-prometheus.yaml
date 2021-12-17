@@ -16,6 +16,13 @@ spec:
       name: alertmanager-main
       namespace: monitoring
       port: web
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: managed-nfs-storage 
+        resources:
+          requests:
+            storage: 100Gi
   externalLabels: {}
   image: quay.io/prometheus/prometheus:v2.26.0
   nodeSelector:
