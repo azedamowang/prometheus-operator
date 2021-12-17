@@ -10,6 +10,7 @@ metadata:
   name: k8s
   namespace: monitoring
 spec:
+  retention: 90d
   alerting:
     alertmanagers:
     - apiVersion: v2
