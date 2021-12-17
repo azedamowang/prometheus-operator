@@ -142,7 +142,7 @@ kubectl delete --ignore-not-found=true -f manifests/ -f manifests/setup
 ### Installing
 
 
-安装文件基本基于这个版本，后期做了修改 新增kube-controller-namager-svc-ep.yaml  kube-scheduler-svc-ep.yaml  默认是没有添加 controller-namager scheduler 的EP 所以alertmanager 监控报警。
+安装文件基本基于release-0.8这个版本,后期做了修改 新增kube-controller-namager-svc-ep.yaml  kube-scheduler-svc-ep.yaml  默认是没有添加 controller-namager scheduler 的EP 所以alertmanager 监控报警。
 
 文件已经修改grafana alertmanager prometheus 的访问方式为nodeport.
 
