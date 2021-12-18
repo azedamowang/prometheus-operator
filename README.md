@@ -156,4 +156,161 @@ kubectl create secret generic  alertmanager-main --from-file=alertmanager.yaml -
 #kube-controller-namager-svc-ep.yaml  kube-scheduler-svc-ep.yaml  需要修改IP为自己服务器的IP
 
 
+###################################自动发现模块#######################################
+kubectl create secret generic additional-configs --from-file=prometheus-additional.yaml -n monitoring
+
+创建完成后，会将上面配置信息进行 base64 编码后作为 prometheus-additional.yaml 这个 key 对应的值存在：
+
+[root@DEV-YEPYPP-01 prometheus-operator]# kubectl get secret additional-configs -n monitoring -o yaml
+apiVersion: v1
+data:
+  prometheus-additional.yaml: LSBqb2JfbmFtZTogJ2t1YmVybmV0ZXMtc2VydmljZS1lbmRwb2ludHMnCiAga3ViZXJuZXRlc19zZF9jb25maWdzOgogIC0gcm9sZTogZW5kcG9pbnRzCiAgcmVsYWJlbF9jb25maWdzOgogIC0gc291cmNlX2xhYmVsczogW19fbWV0YV9rdWJlcm5ldGVzX3NlcnZpY2VfYW5ub3RhdGlvbl9wcm9tZXRoZXVzX2lvX3NjcmFwZV0KICAgIGFjdGlvbjoga2VlcAogICAgcmVnZXg6IHRydWUKICAtIHNvdXJjZV9sYWJlbHM6IFtfX21ldGFfa3ViZXJuZXRlc19zZXJ2aWNlX2Fubm90YXRpb25fcHJvbWV0aGV1c19pb19zY2hlbWVdCiAgICBhY3Rpb246IHJlcGxhY2UKICAgIHRhcmdldF9sYWJlbDogX19zY2hlbWVfXwogICAgcmVnZXg6IChodHRwcz8pCiAgLSBzb3VyY2VfbGFiZWxzOiBbX19tZXRhX2t1YmVybmV0ZXNfc2VydmljZV9hbm5vdGF0aW9uX3Byb21ldGhldXNfaW9fcGF0aF0KICAgIGFjdGlvbjogcmVwbGFjZQogICAgdGFyZ2V0X2xhYmVsOiBfX21ldHJpY3NfcGF0aF9fCiAgICByZWdleDogKC4rKQogIC0gc291cmNlX2xhYmVsczogW19fYWRkcmVzc19fLCBfX21ldGFfa3ViZXJuZXRlc19zZXJ2aWNlX2Fubm90YXRpb25fcHJvbWV0aGV1c19pb19wb3J0XQogICAgYWN0aW9uOiByZXBsYWNlCiAgICB0YXJnZXRfbGFiZWw6IF9fYWRkcmVzc19fCiAgICByZWdleDogKFteOl0rKSg/OjpcZCspPzsoXGQrKQogICAgcmVwbGFjZW1lbnQ6ICQxOiQyCiAgLSBhY3Rpb246IGxhYmVsbWFwCiAgICByZWdleDogX19tZXRhX2t1YmVybmV0ZXNfc2VydmljZV9sYWJlbF8oLispCiAgLSBzb3VyY2VfbGFiZWxzOiBbX19tZXRhX2t1YmVybmV0ZXNfbmFtZXNwYWNlXQogICAgYWN0aW9uOiByZXBsYWNlCiAgICB0YXJnZXRfbGFiZWw6IGt1YmVybmV0ZXNfbmFtZXNwYWNlCiAgLSBzb3VyY2VfbGFiZWxzOiBbX19tZXRhX2t1YmVybmV0ZXNfc2VydmljZV9uYW1lXQogICAgYWN0aW9uOiByZXBsYWNlCiAgICB0YXJnZXRfbGFiZWw6IGt1YmVybmV0ZXNfbmFtZQo=
+kind: Secret
+metadata:
+  creationTimestamp: "2021-12-18T02:36:39Z"
+  managedFields:
+  - apiVersion: v1
+    fieldsType: FieldsV1
+    fieldsV1:
+      f:data:
+        .: {}
+        f:prometheus-additional.yaml: {}
+      f:type: {}
+    manager: kubectl-create
+    operation: Update
+    time: "2021-12-18T02:36:39Z"
+  name: additional-configs
+  namespace: monitoring
+  resourceVersion: "1896537"
+  selfLink: /api/v1/namespaces/monitoring/secrets/additional-configs
+  uid: 109428b3-6f20-4bf9-beea-b198802dba01
+type: Opaque
+
+![image](https://user-images.githubusercontent.com/55533886/146626869-b3a13052-16ef-4cd0-9a48-6c1b4b1f0dc4.png)
+
+然后我们只需要在声明 prometheus 的资源对象文件中添加上这个额外的配置：(prometheus-prometheus.yaml)
+
+![image](https://user-images.githubusercontent.com/55533886/146626893-897ae724-5c64-43ff-87f4-4a7bd9548b7e.png)
+
+apiVersion: monitoring.coreos.com/v1
+kind: Prometheus
+metadata:
+  labels:
+    app.kubernetes.io/component: prometheus
+    app.kubernetes.io/name: prometheus
+    app.kubernetes.io/part-of: kube-prometheus
+    app.kubernetes.io/version: 2.26.0
+    prometheus: k8s
+  name: k8s
+  namespace: monitoring
+spec:
+  retention: 90d
+  alerting:
+    alertmanagers:
+    - apiVersion: v2
+      name: alertmanager-main
+      namespace: monitoring
+      port: web
+  storage:
+    volumeClaimTemplate:
+      spec:
+        storageClassName: managed-nfs-storage 
+        resources:
+          requests:
+            storage: 100Gi
+  externalLabels: {}
+  image: quay.io/prometheus/prometheus:v2.26.0
+  nodeSelector:
+    kubernetes.io/os: linux
+  podMetadata:
+    labels:
+      app.kubernetes.io/component: prometheus
+      app.kubernetes.io/name: prometheus
+      app.kubernetes.io/part-of: kube-prometheus
+      app.kubernetes.io/version: 2.26.0
+  podMonitorNamespaceSelector: {}
+  podMonitorSelector: {}
+  probeNamespaceSelector: {}
+  probeSelector: {}
+  replicas: 2
+  resources:
+    requests:
+      memory: 400Mi
+  ruleSelector:
+    matchLabels:
+      prometheus: k8s
+      role: alert-rules
+  securityContext:
+    fsGroup: 2000
+    runAsNonRoot: true
+    runAsUser: 1000
+  additionalScrapeConfigs:
+    name: additional-configs
+    key: prometheus-additional.yaml
+  serviceAccountName: prometheus-k8s
+  serviceMonitorNamespaceSelector: {}
+  serviceMonitorSelector: {}
+  version: 2.26.0
+  
+添加完成后，直接更新 prometheus 这个 CRD 资源对象：
+kubectl apply -f prometheus-prometheus.yaml
+  
+隔一小会儿，可以前往 Prometheus 的 Dashboard 中查看配置是否生效：
+  
+![image](https://user-images.githubusercontent.com/55533886/146626915-264f500f-8e3e-481a-b7e1-54220934a574.png)
+
+
+修改prometheus-clusterRole.yaml 增加权限避免prometheus参数错误日志 都是xxx is forbidden.
+
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: prometheus-k8s
+rules:
+- apiGroups:
+  - ""
+  resources:
+  - nodes
+  - services
+  - endpoints
+  - pods
+  - nodes/proxy
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - ""
+  resources:
+  - configmaps
+  - nodes/metrics
+  verbs:
+  - get
+- nonResourceURLs:
+  - /metrics
+  verbs:
+  - get
+
+更新prometheus-clusterRole.yaml 稍等一会就可以看到
+![image](https://user-images.githubusercontent.com/55533886/146626976-6e25059a-c4d7-43da-920f-242cf3bf3602.png)
+
+部署  redis-prom.yaml，待程序启动之后可以验证.
+
+kubectl get pods,svc -n monitoring | grep redis
+
+curl 10.244.0.81:9121/metrics|grep "redis_up 1"  #验证是否可以正常访问.
+
+curl 10.244.0.81:9121/metrics|grep -v ^#  查询reids metrics下可以查询到的指标.
+
+![image](https://user-images.githubusercontent.com/55533886/146627052-c6ff7994-08a3-46ad-a312-2815320287fe.png)
+
+
+
+
+prometheus-operator 自动发现部署完成....
+
+
+
+
+
 Apache License 2.0, see [LICENSE](https://github.com/prometheus-operator/kube-prometheus/blob/main/LICENSE).
