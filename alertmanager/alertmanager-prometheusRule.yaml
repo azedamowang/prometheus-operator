@@ -1,0 +1,138 @@
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  labels:
+    app.kubernetes.io/component: alert-router
+    app.kubernetes.io/name: alertmanager
+    app.kubernetes.io/part-of: kube-prometheus
+    app.kubernetes.io/version: 0.21.0
+    prometheus: k8s
+    role: alert-rules
+  name: alertmanager-main-rules
+  namespace: monitoring
+spec:
+  groups:
+  - name: alertmanager.rules
+    rules:
+    - alert: AlertmanagerFailedReload
+      annotations:
+        description: 加载 {{ $labels.namespace }}/{{ $labels.pod}} 的配置时出现错误。
+        runbook_url: https://github.com/prometheus-operator/kube-prometheus/wiki/alertmanagerfailedreload
+        summary: 重新加载 Alertmanager 的配置失败.
+      expr: |
+        # Without max_over_time, failed scrapes could create false negatives, see
+        # https://www.robustperception.io/alerting-on-gauges-in-prometheus-2-0 for details.
+        max_over_time(alertmanager_config_last_reload_successful{job="alertmanager-main",namespace="monitoring"}[5m]) == 0
+      for: 5s
+      labels:
+        severity: critical
+    - alert: AlertmanagerMembersInconsistent
+      annotations:
+        description: Alertmanager {{ $labels.namespace }}/{{ $labels.pod}} 只发现了集群 {{$labels.job}} 中的 {{ $value }} 个成员实例。
+        runbook_url: https://github.com/prometheus-operator/kube-prometheus/wiki/alertmanagermembersinconsistent
+        summary: Alertmanager 的某个实例未能全部发现集群中的其他成员实例。
+      expr: |
+        # Without max_over_time, failed scrapes could create false negatives, see
+        # https://www.robustperception.io/alerting-on-gauges-in-prometheus-2-0 for details.
+          max_over_time(alertmanager_cluster_members{job="alertmanager-main",namespace="monitoring"}[5m])
+        < on (namespace,service) group_left
+          count by (namespace,service) (max_over_time(alertmanager_cluster_members{job="alertmanager-main",namespace="monitoring"}[5m]))
+      for: 5s
+      labels:
+        severity: critical
+    - alert: AlertmanagerFailedToSendAlerts
+      annotations:
+        description: Alertmanager {{ $labels.namespace }}/{{ $labels.pod}} 在发送告警消息到  {{ $labels.integration }} 时出现了 {{ $value | humanizePercentage }} 的失败率。
+        runbook_url: https://github.com/prometheus-operator/kube-prometheus/wiki/alertmanagerfailedtosendalerts
+        summary: 某个 Alertmanager 发送告警消息失败。
+      expr: |
+        (
+          rate(alertmanager_notifications_failed_total{job="alertmanager-main",namespace="monitoring"}[5m])
+        /
+          rate(alertmanager_notifications_total{job="alertmanager-main",namespace="monitoring"}[5m])
+        )
+        > 0.01
+      for: 5s
+      labels:
+        severity: warning
+    - alert: AlertmanagerClusterFailedToSendAlerts
+      annotations:
+        description: Alertmanager 集群 {{$labels.job}} 的所有实例中，向 {{ $labels.integration }} 发送告警消息时的最低失败率是 {{ $value | humanizePercentage }}。
+        runbook_url: https://github.com/prometheus-operator/kube-prometheus/wiki/alertmanagerclusterfailedtosendalerts
+        summary: Alertmanager 集群中所有的实例都不能通过某个关键的消息接口发送告警消息。
+      expr: |
+        min by (namespace,service, integration) (
+          rate(alertmanager_notifications_failed_total{job="alertmanager-main",namespace="monitoring", integration=~`.*`}[5m])
+        /
+          rate(alertmanager_notifications_total{job="alertmanager-main",namespace="monitoring", integration=~`.*`}[5m])
+        )
+        > 0.01
+      for: 5s
+      labels:
+        severity: critical
+    - alert: AlertmanagerClusterFailedToSendAlerts
+      annotations:
+        description: Alertmanager 集群 {{$labels.job}} 的所有实例中，向 {{ $labels.integration }} 发送告警消息时的最低失败率是 {{ $value | humanizePercentage }}。
+        runbook_url: https://github.com/prometheus-operator/kube-prometheus/wiki/alertmanagerclusterfailedtosendalerts
+        summary: Alertmanager 集群中所有的实例都不能通过某个关键的消息接口发送告警消息。
+      expr: |
+        min by (namespace,service, integration) (
+          rate(alertmanager_notifications_failed_total{job="alertmanager-main",namespace="monitoring", integration!~`.*`}[5m])
+        /
+          rate(alertmanager_notifications_total{job="alertmanager-main",namespace="monitoring", integration!~`.*`}[5m])
+        )
+        > 0.01
+      for: 5s
+      labels:
+        severity: warning
+    - alert: AlertmanagerConfigInconsistent
+      annotations:
+        description: Alertmanager 集群 {{ $labels.job }} 中的实例之间配置不相同。
+        runbook_url: https://github.com/prometheus-operator/kube-prometheus/wiki/alertmanagerconfiginconsistent
+        summary: 同一个 Alertmanager 集群中的不同实例配置不同。
+      expr: |
+        count by (namespace,service) (
+          count_values by (namespace,service) ("config_hash", alertmanager_config_hash{job="alertmanager-main",namespace="monitoring"})
+        )
+        != 1
+      for: 5s
+      labels:
+        severity: critical
+    - alert: AlertmanagerClusterDown
+      annotations:
+        description: 过去五分中里，Alertmanager 集群 {{ $labels.job }} 中 {{ $value | humanizePercentage }} 的实例（低于半数）处于运行状态。
+        runbook_url: https://github.com/prometheus-operator/kube-prometheus/wiki/alertmanagerclusterdown
+        summary: 超过半数的 Alertmanager 实例已停机。
+      expr: |
+        (
+          count by (namespace,service) (
+            avg_over_time(up{job="alertmanager-main",namespace="monitoring"}[5m]) < 0.5
+          )
+        /
+          count by (namespace,service) (
+            up{job="alertmanager-main",namespace="monitoring"}
+          )
+        )
+        >= 0.5
+      for: 5s
+      labels:
+        severity: critical
+    - alert: AlertmanagerClusterCrashlooping
+      annotations:
+        description: 在过去的 10 分钟内，Alertmanager 集群 {{$labels.job}} 中 {{ $value | humanizePercentage }} 的实例已崩溃重启了至少 5 次。
+        runbook_url: https://github.com/prometheus-operator/kube-prometheus/wiki/alertmanagerclustercrashlooping
+        summary: Alertmanager 集群中超过半数的实例处于不断崩溃重启的状态。
+      expr: |
+        (
+          count by (namespace,service) (
+            changes(process_start_time_seconds{job="alertmanager-main",namespace="monitoring"}[10m]) > 4
+          )
+        /
+          count by (namespace,service) (
+            up{job="alertmanager-main",namespace="monitoring"}
+          )
+        )
+        >= 0.5
+      for: 5s
+      labels:
+        severity: critical
