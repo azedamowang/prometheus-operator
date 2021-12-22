@@ -148,6 +148,7 @@ kubectl delete --ignore-not-found=true -f manifests/ -f manifests/setup
 
 
 #添加alertmanager-main confmap secret 
+
 kubectl create secret generic  alertmanager-main --from-file=alertmanager.yaml --from-file=email.tmpl -n monitoring
 
 
