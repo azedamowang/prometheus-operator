@@ -152,9 +152,13 @@ kubectl delete --ignore-not-found=true -f manifests/ -f manifests/setup
 
 
 #########################
+
 这是为了防止prometheus无法监听controller scheduler 的metrics地址
+
 修改 /etc/kubernetes/manifests/kube-controller-manager.yaml 文件的监听地址为 0.0.0.0 # - --bind-address=0.0.0.0
+
 修改 /etc/kubernetes/manifests/kube-scheduler.yaml  文件的监听地址为 0.0.0.0 # - --bind-address=0.0.0.0
+
 #########################
 #添加alertmanager-main confmap secret 报警配置项
 
@@ -200,11 +204,17 @@ kubectl apply -f prometheus-prometheus.yaml
 
 ####################部署应用程序##########################
 这些目录下文件可以一次性执行（无先后顺序） kubectl apply -f ./   
+
 alertmanager
+
 blackbox
+
 grafana
+
 kubernetes
+
 node-export
+
 prometheus
 
 ##############自动发现验证#####################
@@ -221,7 +231,7 @@ curl 10.244.0.81:9121/metrics|grep -v ^#  查询reids metrics下可以查询到�
 
 
 
-prometheus-operator 自动发现部署完成....
+prometheus-operator 自动发现部署完成。
 
 
 
