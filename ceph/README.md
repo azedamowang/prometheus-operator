@@ -1,7 +1,3 @@
-# 创建命名空间
-```
-kubectl create namespace clusterstorage
-```
 #进入ceph 创建存储空间
 ```
 ceph osd pool ls
