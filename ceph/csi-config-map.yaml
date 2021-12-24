@@ -1,0 +1,19 @@
+---
+apiVersion: v1
+kind: ConfigMap
+data:
+  config.json: |-
+    [
+      {
+        "clusterID": "7554e803-26c6-421b-b04a-9b8c8d155e8d", 
+        "monitors": [
+          "192.168.32.50:6789"
+        ],
+        "cephFS": {
+          "subvolumeGroup": "/kube-volumes"
+        }
+      }
+    ]
+metadata:
+  name: ceph-csi-config
+  namespace: kube-system
