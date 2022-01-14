@@ -235,6 +235,11 @@ prometheus-operator 自动发现部署完成。
 
 
 
+1.20.X 使用以下NFS镜像 修改deployment的image地址就可以了 不然会出现pending的问题PV无法创建。
+
+vbouchaud/nfs-client-provisioner
+
+
 
 
 Apache License 2.0, see [LICENSE](https://github.com/prometheus-operator/kube-prometheus/blob/main/LICENSE).
