@@ -173,6 +173,7 @@ kubectl create secret generic  alertmanager-main --from-file=alertmanager.yaml -
 
 
 ###################################自动发现模块#######################################
+
 kubectl create secret generic additional-configs --from-file=prometheus-additional.yaml -n monitoring
 
 创建完成后，会将上面配置信息进行 base64 编码后作为 prometheus-additional.yaml 这个 key 对应的值存在：
@@ -188,6 +189,7 @@ kubectl get secret additional-configs -n monitoring -o yaml
 
   
 添加完成后，直接更新 prometheus 这个 CRD 资源对象：
+
 kubectl apply -f prometheus-prometheus.yaml
   
 隔一小会儿，可以前往 Prometheus 的 Dashboard 中查看配置是否生效：
@@ -197,12 +199,13 @@ kubectl apply -f prometheus-prometheus.yaml
 
 修改prometheus-clusterRole.yaml 增加权限避免prometheus参数错误日志 都是xxx is forbidden.
 
-
 更新prometheus-clusterRole.yaml 稍等一会就可以看到
+
 ![image](https://user-images.githubusercontent.com/55533886/146626976-6e25059a-c4d7-43da-920f-242cf3bf3602.png)
 ########基础准备完成#########
 
 ####################部署应用程序##########################
+
 这些目录下文件可以一次性执行（无先后顺序） kubectl apply -f ./   
 
 alertmanager
@@ -218,6 +221,7 @@ node-export
 prometheus
 
 ##############自动发现验证#####################
+
 部署 test目录下  redis-prom.yaml，待程序启动之后可以验证.
 
 kubectl get pods,svc -n monitoring | grep redis
@@ -227,6 +231,7 @@ curl 10.244.0.81:9121/metrics|grep "redis_up 1"  #验证是否可以正常访问
 curl 10.244.0.81:9121/metrics|grep -v ^#  查询reids metrics下可以查询到的指标.
 
 ![image](https://user-images.githubusercontent.com/55533886/146627052-c6ff7994-08a3-46ad-a312-2815320287fe.png)
+
 ##############自动发现验证完成#####################
 
 
