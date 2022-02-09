@@ -11,9 +11,9 @@ $ yum install -y nfs-utils
 
 #启动NFS服务
 
-systemctl start rpcbind && systemctl enable rpcbind
-
 systemctl start nfs && systemctl enable nfs
+
+systemctl start rpcbind && systemctl enable rpcbind
 
 #NFS服务配置/etc/exports
 
